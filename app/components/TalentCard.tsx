@@ -5,10 +5,26 @@ import type { Agent } from "./types";
 
 /* ── Helpers ── */
 
-function getLoomThumbnailUrl(loomUrl: string): string | null {
-  const match = loomUrl.match(/[a-f0-9]{16,}/i);
-  if (!match) return null;
-  return `https://cdn.loom.com/sessions/thumbnails/${match[0]}-00001.jpg`;
+function getFallbackThumbnail(url?: string): string | null {
+  if (!url) return null;
+
+  // Google Drive video thumbnail
+  if (url.includes("drive.google.com")) {
+    const match = url.match(/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1200`;
+    }
+  }
+
+  // YouTube video thumbnail
+  if (url.includes("youtube.com") || url.includes("youtu.be")) {
+    const match = url.match(/(?:embed\/|v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+    }
+  }
+
+  return null;
 }
 
 /* ── Thumbnail overlay with play button ── */
@@ -21,9 +37,7 @@ function CardThumbnail({
   onClick: () => void;
 }) {
   const [thumbFailed, setThumbFailed] = useState(false);
-  const thumbnailUrl = agent.loomUrl
-    ? getLoomThumbnailUrl(agent.loomUrl)
-    : null;
+  const thumbnailUrl = agent.thumbnailUrl || getFallbackThumbnail(agent.loomUrl);
 
   const initials = agent.name
     .split(" ")
@@ -61,7 +75,7 @@ function CardThumbnail({
     </div>
   );
 
-  if (!agent.loomUrl) return placeholder;
+  if (!agent.loomUrl && !thumbnailUrl) return placeholder;
 
   return (
     <button
@@ -73,7 +87,7 @@ function CardThumbnail({
       {thumbnailUrl && !thumbFailed ? (
         <img
           src={thumbnailUrl}
-          alt=""
+          alt={`${agent.name} video thumbnail`}
           loading="lazy"
           onError={() => setThumbFailed(true)}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -83,7 +97,7 @@ function CardThumbnail({
       )}
 
       {/* Hover overlay */}
-      <span className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+      <span className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors duration-300" />
 
       {/* Play button with pulse */}
       <span className="absolute inset-0 flex items-center justify-center">

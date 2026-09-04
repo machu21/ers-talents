@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, forwardRef } from "react";
+import { useState, useRef, useEffect, forwardRef, useCallback } from "react";
 import type { Agent } from "./types";
 
 export default function HireModal({
@@ -18,9 +18,18 @@ export default function HireModal({
     companyName: "",
     notes: "",
   });
+  const [hpWebsite, setHpWebsite] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
+
+  const handleDismiss = useCallback(() => {
+    if (submitted) {
+      onSuccess(agent.name, agent.opportunityId);
+    }
+    onClose();
+  }, [submitted, agent.name, agent.opportunityId, onSuccess, onClose]);
 
   // Focus first field + escape-to-close
   useEffect(() => {
@@ -30,17 +39,19 @@ export default function HireModal({
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [submitted]);
+  }, [submitted, handleDismiss]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    if (errorMessage) setErrorMessage(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMessage(null);
 
     try {
       const res = await fetch("/api/hire", {
@@ -48,25 +59,30 @@ export default function HireModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           opportunityId: agent.opportunityId,
+          hp_website: hpWebsite,
           ...formData,
         }),
       });
 
-      if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
         setSubmitted(true);
+      } else if (res.status === 429) {
+        setErrorMessage(
+          data.error || "Too many requests submitted. Please wait a few minutes before trying again."
+        );
+      } else {
+        setErrorMessage(
+          data.error || "Failed to submit request. Please verify your details and try again."
+        );
       }
     } catch (error) {
       console.error("Error submitting hire form:", error);
+      setErrorMessage("Network connection error. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleDismiss = () => {
-    if (submitted) {
-      onSuccess(agent.name, agent.opportunityId);
-    }
-    onClose();
   };
 
   return (
@@ -107,7 +123,6 @@ export default function HireModal({
         {submitted ? (
           /* ── Success view ── */
           <div className="flex flex-col items-center text-center py-4">
-            {/* Animated checkmark */}
             <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mb-6 animate-fade-in-up">
               <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
                 <svg
@@ -162,7 +177,47 @@ export default function HireModal({
               Add your details and we&apos;ll follow up shortly.
             </p>
 
+            {errorMessage && (
+              <div
+                role="alert"
+                className="mb-4 p-3.5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl flex items-start gap-2.5 animate-fade-in-up"
+              >
+                <svg
+                  className="w-5 h-5 text-red-500 shrink-0 mt-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+                  />
+                </svg>
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {/* Anti-Bot Honeypot Field (invisible to humans, traps automated form-spammers) */}
+              <div
+                className="opacity-0 pointer-events-none absolute -left-[9999px] -top-[9999px] h-0 w-0 overflow-hidden"
+                aria-hidden="true"
+                tabIndex={-1}
+              >
+                <label htmlFor="hp_website">Leave this blank</label>
+                <input
+                  type="text"
+                  id="hp_website"
+                  name="hp_website"
+                  value={hpWebsite}
+                  onChange={(e) => setHpWebsite(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </div>
+
               <Field
                 ref={firstFieldRef}
                 label="Your name"
@@ -207,7 +262,7 @@ export default function HireModal({
                   name="notes"
                   value={formData.notes}
                   onChange={handleChange}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#5E26DF] focus:ring-1 focus:ring-[#5E26DF] transition-colors"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#5E26DF] focus:ring-1 focus:ring-[#5E26DF] transition-colors text-sm"
                   placeholder="Tell us a bit about the tasks..."
                 />
               </div>
@@ -292,7 +347,7 @@ const Field = forwardRef<
         name={name}
         value={value}
         onChange={onChange}
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#5E26DF] focus:ring-1 focus:ring-[#5E26DF] transition-colors"
+        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#5E26DF] focus:ring-1 focus:ring-[#5E26DF] transition-colors text-sm"
         placeholder={placeholder}
       />
     </div>

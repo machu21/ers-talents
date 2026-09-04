@@ -23,8 +23,73 @@ export default function TalentPoolPage() {
 
   /* ── Fetch agents ── */
 
+  const fetchAgents = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const res = await fetch("/api/agents");
+      if (res.status === 429) {
+        const errData = await res.json().catch(() => ({}));
+        setToast({
+          type: "error",
+          message:
+            errData.error || "You are browsing too quickly. Please wait a moment.",
+        });
+        setLoadError(true);
+        return;
+      }
+      const data = await res.json();
+      if (data.agents) {
+        setAgents(data.agents);
+      } else {
+        setLoadError(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch agents:", error);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    fetchAgents();
+    let ignore = false;
+    async function initFetch() {
+      try {
+        const res = await fetch("/api/agents");
+        if (ignore) return;
+        if (res.status === 429) {
+          const errData = await res.json().catch(() => ({}));
+          setToast({
+            type: "error",
+            message:
+              errData.error || "You are browsing too quickly. Please wait a moment.",
+          });
+          setLoadError(true);
+          return;
+        }
+        const data = await res.json();
+        if (ignore) return;
+        if (data.agents) {
+          setAgents(data.agents);
+        } else {
+          setLoadError(true);
+        }
+      } catch (error) {
+        if (ignore) return;
+        console.error("Failed to fetch agents:", error);
+        setLoadError(true);
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    initFetch();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   /* ── Auto-dismiss toast ── */
@@ -34,21 +99,6 @@ export default function TalentPoolPage() {
     const t = setTimeout(() => setToast(null), 4000);
     return () => clearTimeout(t);
   }, [toast]);
-
-  const fetchAgents = async () => {
-    setLoading(true);
-    setLoadError(false);
-    try {
-      const res = await fetch("/api/agents");
-      const data = await res.json();
-      if (data.agents) setAgents(data.agents);
-    } catch (error) {
-      console.error("Failed to fetch agents:", error);
-      setLoadError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredAgents = agents.filter((agent) => {
     if (activeTab === "All") return true;

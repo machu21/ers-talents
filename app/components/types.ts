@@ -4,6 +4,7 @@ export type Agent = {
   role: string;
   stage: string;
   loomUrl?: string;
+  thumbnailUrl?: string;
 };
 
 export type ToastState = {
