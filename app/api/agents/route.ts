@@ -196,11 +196,13 @@ async function fetchAgentsFromGHL(): Promise<CachedAgent[]> {
       } else if (opp.pipelineStageId === process.env.GHL_AVAILABLE_SALES_STAGE_ID) {
         role = 'Cold Caller / Sales';
       }
+      const firstName = opp.name ? opp.name.trim().split(' ')[0] : 'Unknown';
+      const displayName = `VA ${firstName}`;
 
       return {
         opportunityId: opp.id,
         contactId: opp.contactId,
-        name: opp.name,
+        name: displayName,
         role: role,
         stage: 'Available - ' + role,
         loomUrl: embedUrl,
