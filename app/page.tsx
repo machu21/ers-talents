@@ -9,6 +9,7 @@ import TalentCard from "./components/TalentCard";
 import SkeletonCard from "./components/SkeletonCard";
 import VideoModal from "./components/VideoModal";
 import HireModal from "./components/HireModal";
+import MoreInfoModal from "./components/MoreInfoModal";
 import Toast from "./components/Toast";
 
 export default function TalentPoolPage() {
@@ -16,9 +17,12 @@ export default function TalentPoolPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [activeTab, setActiveTab] = useState("All");
+  const [minRate, setMinRate] = useState(0);
+  const [maxRate, setMaxRate] = useState(50);
 
   const [videoAgent, setVideoAgent] = useState<Agent | null>(null);
   const [hireAgent, setHireAgent] = useState<Agent | null>(null);
+  const [moreInfoAgent, setMoreInfoAgent] = useState<Agent | null>(null);
   const [toast, setToast] = useState<ToastState>(null);
 
   /* ── Fetch agents ── */
@@ -101,14 +105,36 @@ export default function TalentPoolPage() {
   }, [toast]);
 
   const filteredAgents = agents.filter((agent) => {
-    if (activeTab === "All") return true;
-    return agent.stage.includes(activeTab);
+    // 1. Role / Stage tab filter
+    const matchesTab = activeTab === "All" || agent.stage.includes(activeTab);
+    
+    // 2. Rate filter
+    let matchesRate = true;
+    if (agent.clientRate) {
+      const rateStr = agent.clientRate.replace(/[^0-9.]/g, '');
+      const rateNum = parseFloat(rateStr);
+      if (!isNaN(rateNum)) {
+        matchesRate = rateNum >= minRate && rateNum <= maxRate;
+      } else {
+        matchesRate = false;
+      }
+    } else {
+      // If agent has no rate, maybe we include them only if filter is wide open?
+      // Or exclude them. Let's exclude them if there's any filtering.
+      if (minRate > 0 || maxRate < 50) {
+        matchesRate = false;
+      }
+    }
+    
+    return matchesTab && matchesRate;
   });
 
   /* ── Callbacks ── */
 
   const handleWatchVideo = useCallback((agent: Agent) => setVideoAgent(agent), []);
   const handleCloseVideo = useCallback(() => setVideoAgent(null), []);
+  const handleMoreInfoClick = useCallback((agent: Agent) => setMoreInfoAgent(agent), []);
+  const handleCloseMoreInfo = useCallback(() => setMoreInfoAgent(null), []);
   const handleHireClick = useCallback((agent: Agent) => setHireAgent(agent), []);
   const handleCloseHire = useCallback(() => setHireAgent(null), []);
 
@@ -126,7 +152,14 @@ export default function TalentPoolPage() {
     <div className="min-h-screen bg-[#F9FAFC] text-slate-800 font-sans pb-24">
       <Navbar talentCount={agents.length} loading={loading} />
       <Toast toast={toast} />
-      <Hero activeTab={activeTab} onTabChange={setActiveTab} />
+      <Hero 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        minRate={minRate}
+        maxRate={maxRate}
+        onMinRateChange={setMinRate}
+        onMaxRateChange={setMaxRate}
+      />
 
       <main className="max-w-[1440px] mx-auto px-6">
         {loading ? (
@@ -146,13 +179,14 @@ export default function TalentPoolPage() {
                   agent={agent}
                   index={i}
                   onWatchVideo={handleWatchVideo}
+                  onMoreInfo={handleMoreInfoClick}
                   onHire={handleHireClick}
                 />
               ))}
             </div>
 
             {filteredAgents.length === 0 && (
-              <EmptyState onReset={() => setActiveTab("All")} />
+              <EmptyState onReset={() => { setActiveTab("All"); setMinRate(0); setMaxRate(50); }} />
             )}
           </>
         )}
@@ -160,6 +194,7 @@ export default function TalentPoolPage() {
 
       {/* Modals */}
       {videoAgent && <VideoModal agent={videoAgent} onClose={handleCloseVideo} />}
+      {moreInfoAgent && <MoreInfoModal agent={moreInfoAgent} onClose={handleCloseMoreInfo} />}
       {hireAgent && (
         <HireModal
           agent={hireAgent}
@@ -175,7 +210,7 @@ export default function TalentPoolPage() {
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="text-center py-20 bg-white rounded-3xl border border-slate-100">
+    <div className="text-center py-20 px-6 bg-white rounded-3xl border border-slate-100">
       <svg
         className="mx-auto w-12 h-12 text-slate-300 mb-4"
         fill="none"
@@ -207,7 +242,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 
 function EmptyState({ onReset }: { onReset: () => void }) {
   return (
-    <div className="text-center py-20 bg-white rounded-3xl border border-slate-100">
+    <div className="text-center py-20 px-6 bg-white rounded-3xl border border-slate-100">
       <svg
         className="mx-auto w-12 h-12 text-slate-300 mb-4"
         fill="none"

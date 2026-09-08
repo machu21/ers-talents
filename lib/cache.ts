@@ -75,6 +75,8 @@ export interface CachedAgent {
   stage: string;
   loomUrl?: string;
   thumbnailUrl?: string;
+  hrInfo?: string;
+  clientRate?: string;
 }
 
 // Global cache instance for GHL agents listing (TTL: 60 seconds)

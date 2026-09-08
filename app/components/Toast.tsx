@@ -9,7 +9,7 @@ export default function Toast({ toast }: { toast: ToastState }) {
     <div
       role="status"
       aria-live="polite"
-      className={`fixed top-5 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
+      className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-fade-in-up ${
         toast.type === "success" ? "bg-slate-900 text-white" : "bg-red-600 text-white"
       }`}
     >

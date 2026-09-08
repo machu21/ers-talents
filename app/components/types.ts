@@ -5,6 +5,8 @@ export type Agent = {
   stage: string;
   loomUrl?: string;
   thumbnailUrl?: string;
+  hrInfo?: string;
+  clientRate?: string;
 };
 
 export type ToastState = {

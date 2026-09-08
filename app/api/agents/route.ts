@@ -11,6 +11,8 @@ interface GHLOpportunity {
 
 interface GHLContactCustomField {
   id: string;
+  key?: string;
+  name?: string;
   value?: string;
   fieldValue?: string;
 }
@@ -136,6 +138,8 @@ async function fetchAgentsFromGHL(): Promise<CachedAgent[]> {
   const agents = await Promise.all(
     filteredOpps.map(async (opp): Promise<CachedAgent> => {
       let rawVideoUrl = '';
+      let hrInfo = '';
+      let clientRate = '';
 
       if (opp.contactId) {
         try {
@@ -148,9 +152,34 @@ async function fetchAgentsFromGHL(): Promise<CachedAgent[]> {
             const contactData = (await contactRes.json()) as GHLContactResponse;
             const contactCustomFields = contactData.contact?.customFields || [];
             const videoField = contactCustomFields.find((f) => f.id === 'f2WEaWF6Fuq8sU1zKDcp');
+            const hrInfoField = contactCustomFields.find(
+              (f) =>
+                f.id === (process.env.GHL_HR_INFOS_FIELD_ID || 'kQoPRqPzU09DPMFAE3We') ||
+                f.key === 'hr_info' ||
+                f.key === 'contact.hr_info' ||
+                f.name?.toLowerCase() === 'hr info' ||
+                f.name?.toLowerCase() === 'hr infos'
+            );
+
+            const clientRateField = contactCustomFields.find(
+              (f) =>
+                f.id === (process.env.GHL_CLIENT_RATE_FIELD_ID || 'HvU37XjiulGTqklUkjUw') ||
+                f.key === 'client_rate' ||
+                f.key === 'contact.client_rate' ||
+                f.name?.toLowerCase() === 'client rate' ||
+                f.name?.toLowerCase() === 'rate' ||
+                f.name?.toLowerCase() === 'hourly rate'
+            );
 
             if (videoField) {
               rawVideoUrl = videoField.value || videoField.fieldValue || '';
+            }
+            if (hrInfoField) {
+              hrInfo = hrInfoField.value || hrInfoField.fieldValue || '';
+            }
+            if (clientRateField) {
+              const val = clientRateField.value ?? clientRateField.fieldValue ?? '';
+              clientRate = val.toString();
             }
           }
         } catch (contactErr) {
@@ -176,6 +205,8 @@ async function fetchAgentsFromGHL(): Promise<CachedAgent[]> {
         stage: 'Available - ' + role,
         loomUrl: embedUrl,
         thumbnailUrl: thumbnailUrl || undefined,
+        hrInfo: hrInfo || undefined,
+        clientRate: clientRate || undefined,
       };
     })
   );
