@@ -17,8 +17,6 @@ export default function TalentPoolPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [activeTab, setActiveTab] = useState("All");
-  const [minRate, setMinRate] = useState(0);
-  const [maxRate, setMaxRate] = useState(50);
 
   const [videoAgent, setVideoAgent] = useState<Agent | null>(null);
   const [hireAgent, setHireAgent] = useState<Agent | null>(null);
@@ -108,25 +106,7 @@ export default function TalentPoolPage() {
     // 1. Role / Stage tab filter
     const matchesTab = activeTab === "All" || agent.stage.includes(activeTab);
     
-    // 2. Rate filter
-    let matchesRate = true;
-    if (agent.clientRate) {
-      const rateStr = agent.clientRate.replace(/[^0-9.]/g, '');
-      const rateNum = parseFloat(rateStr);
-      if (!isNaN(rateNum)) {
-        matchesRate = rateNum >= minRate && rateNum <= maxRate;
-      } else {
-        matchesRate = false;
-      }
-    } else {
-      // If agent has no rate, maybe we include them only if filter is wide open?
-      // Or exclude them. Let's exclude them if there's any filtering.
-      if (minRate > 0 || maxRate < 50) {
-        matchesRate = false;
-      }
-    }
-    
-    return matchesTab && matchesRate;
+    return matchesTab;
   });
 
   /* ── Callbacks ── */
@@ -155,10 +135,6 @@ export default function TalentPoolPage() {
       <Hero 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
-        minRate={minRate}
-        maxRate={maxRate}
-        onMinRateChange={setMinRate}
-        onMaxRateChange={setMaxRate}
       />
 
       <main className="max-w-[1440px] mx-auto px-6">
@@ -186,7 +162,7 @@ export default function TalentPoolPage() {
             </div>
 
             {filteredAgents.length === 0 && (
-              <EmptyState onReset={() => { setActiveTab("All"); setMinRate(0); setMaxRate(50); }} />
+              <EmptyState onReset={() => { setActiveTab("All"); }} />
             )}
           </>
         )}

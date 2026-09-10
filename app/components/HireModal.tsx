@@ -17,6 +17,7 @@ export default function HireModal({
     clientEmail: "",
     companyName: "",
     notes: "",
+    clientRate: "7",
   });
   const [hpWebsite, setHpWebsite] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,6 +60,7 @@ export default function HireModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           opportunityId: agent.opportunityId,
+          contactId: agent.contactId,
           hp_website: hpWebsite,
           ...formData,
         }),
@@ -249,6 +251,27 @@ export default function HireModal({
                 onChange={handleChange}
                 placeholder="Acme Corp"
               />
+              <div>
+                <label
+                  htmlFor="clientRate"
+                  className="block text-sm font-medium text-slate-700 mb-1"
+                >
+                  Offer Rate ($/hr)
+                </label>
+                <select
+                  id="clientRate"
+                  name="clientRate"
+                  value={formData.clientRate}
+                  onChange={handleChange as any}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[#5E26DF] focus:ring-1 focus:ring-[#5E26DF] transition-colors text-sm bg-white"
+                >
+                  {[7, 8, 9, 10, 11, 12, 13, 14, 15, 20, 25, 30].map((rate) => (
+                    <option key={rate} value={rate}>
+                      ${rate}/hr
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label
                   htmlFor="notes"

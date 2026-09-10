@@ -33,10 +33,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       opportunityId,
+      contactId,
       clientName,
       clientEmail,
       companyName,
       notes = '',
+      clientRate,
       hp_website, // Honeypot field for bot detection
     } = body;
 
@@ -83,6 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     const sanitizedNotes = typeof notes === 'string' ? notes.trim().slice(0, 2000) : '';
+    const sanitizedRate = typeof clientRate === 'string' || typeof clientRate === 'number' ? String(clientRate) : '';
 
     // 4. Per-Opportunity Cooldown Check
     // Prevents race conditions or repeated requests hijacking the same candidate simultaneously
@@ -138,6 +141,36 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+
+    if (contactId && sanitizedRate) {
+      const contactOptions = {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${process.env.GHL_ACCESS_TOKEN}`,
+          Version: '2021-07-28',
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          customFields: [
+            {
+              id: process.env.GHL_CLIENT_RATE_FIELD_ID || 'HvU37XjiulGTqklUkjUw',
+              key: 'client_rate',
+              field_value: sanitizedRate,
+            }
+          ]
+        })
+      };
+
+      try {
+        const contactResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, contactOptions);
+        if (!contactResponse.ok) {
+           console.warn(`GHL Contact API responded with status: ${contactResponse.status}`);
+        }
+      } catch (err) {
+        console.error('Error updating GHL contact:', err);
+      }
+    }
 
     // 6. Invalidate agent cache so public listing reflects candidate removal
     agentsCache.invalidate('ghl_agents_pool');

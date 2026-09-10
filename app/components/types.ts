@@ -1,5 +1,6 @@
 export type Agent = {
   opportunityId: string;
+  contactId?: string;
   name: string;
   role: string;
   stage: string;
